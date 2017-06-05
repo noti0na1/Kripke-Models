@@ -21,6 +21,8 @@ define a tree with root r
 
 ;; Note: (a . b . c) == (b a c) according to scheme syntax
 
+(set-show-log! #t)
+
 ;; s ⊩ B => true
 (s . ⊩ . B)
 
