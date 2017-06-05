@@ -44,6 +44,9 @@ define a tree with root r
 ;; s ⊩ (¬ A) => true
 (s . ⊩ . (¬ A))
 
+;; u ⊩ (¬ A) => false
+(u . ⊩ . (¬ A))
+
 ;; r ⊩ (A -> C) => false
 (r . ⊩ . (A -> C))
 
