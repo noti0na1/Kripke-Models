@@ -65,19 +65,41 @@
 (define (set-show-log! sl)
   (set! show-log sl))
 
-(define indent 0)
-
-(define (print-indent)
-  (define (pi i)
-    (unless (= i 0)
-      (display " ")
-      (pi (sub1 i))))
-  (pi indent))
-
-(define (print-label l)
-  (match l
-    [(Label raw) raw]
-    [(? symbol? s) s]))
+(define-values (print-check print-result)
+  (let ([indent 0])
+    
+    (define (print-indent)
+      (define (pi i)
+        (unless (= i 0)
+          (display " ")
+          (pi (sub1 i))))
+      (pi indent))
+    
+    (define (print-label l)
+      (match l
+        [(Label raw) raw]
+        [(? symbol? s) s]))
+    
+    (values
+     (lambda (name label) 
+       (when show-log
+         (print-indent)
+         (display "Check: ")
+         (display name)
+         (display " ⊩ ")
+         (displayln (print-label label))
+         ;; add indent by 1
+         (set! indent (add1 indent))))
+     
+     (lambda (name label result) 
+       (when show-log
+         ;; sub indent by 1
+         (set! indent (sub1 indent))
+         (print-indent)
+         (display "Result: ")
+         (display name)
+         (if result (display " ⊩ ") (display " ⊮ "))
+         (displayln (print-label label)))))))
 
 (define (contain? e lst)
   (cond
@@ -87,42 +109,25 @@
 
 (define (force n label)
   (match-define (Node name labels branchs) n)
-  ;; show log
-  (when show-log
-    (print-indent)
-    (display "Check: ")
-    (display name)
-    (display " ⊩ ")
-    (displayln (print-label label))
-    ;; add indent by 1
-    (set! indent (add1 indent)))
-  (define result #f)
-  (set! result
-        (match label
-          [(And _ lhs rhs)
-           (and (force n lhs) (force n rhs))]
-          [(Or _ lhs rhs)
-           (or (force n lhs) (force n rhs))]
-          [(Arrow _ lhs rhs)
-           (cond
-             ;; if n forces lhs, then n has to force rhs
-             [(force n lhs) (force n rhs)]
-             ;; if n doesn't lhs and it has no branchs, then true
-             [(null? branchs) #t]
-             ;; if fail all conditions above, check all its branchs
-             [else (foldl (lambda (x y) (and y (force x label))) #t branchs)])]
-          ;; alwayse false
-          [(Bottum _) #f]
-          [(? symbol? s) (contain? s labels)]))
-  ;; show log
-  (when show-log
-    ;; sub indent by 1
-    (set! indent (sub1 indent))
-    (print-indent)
-    (display "Result: ")
-    (display name)
-    (if result (display " ⊩ ") (display " ⊮ "))
-    (displayln (print-label label)))
+  (print-check name label)
+  (define result 
+    (match label
+      [(And _ lhs rhs)
+       (and (force n lhs) (force n rhs))]
+      [(Or _ lhs rhs)
+       (or (force n lhs) (force n rhs))]
+      [(Arrow _ lhs rhs)
+       (cond
+         ;; if n forces lhs, then n has to force rhs
+         [(force n lhs) (force n rhs)]
+         ;; if n doesn't lhs and it has no branchs, then true
+         [(null? branchs) #t]
+         ;; if fail all conditions above, check all its branchs
+         [else (foldl (lambda (x y) (and y (force x label))) #t branchs)])]
+      ;; alwayse false
+      [(Bottum _) #f]
+      [(? symbol? s) (contain? s labels)]))
+  (print-result name label result)
   result)
 
 (provide define-tree ⊩ ⊮ set-show-log!)
